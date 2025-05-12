@@ -12,11 +12,13 @@
 
 ## Client
 
-- `python3 tmp363 <server_ip> <server_port>
+- `python3 tmp363.py <server_ip> <server_port>`
 
 ## Server
 
-- `python3 server363 <ip> <port>`
+- `python3 server363.py <ip> <port>`
+
+note: server need to run first before client.
 
 # Description
 
