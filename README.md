@@ -14,6 +14,10 @@
 
 - `python3 tmp363.py <server_ip> <server_port>`
 
+If we want to access all user data, then we need to run
+
+- `sudo env "PATH=$VIRTUAL_ENV/bin:$PATH" python3 tmp363.py localhost 8080`
+
 ## Server
 
 - `python3 server363.py <ip> <port>`
