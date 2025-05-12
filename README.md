@@ -8,14 +8,24 @@
 
 - install the library you need. run `pip install pycryptodome`
 
-# running my code 
+# Example usage: 
 
 ## Client
 
-- `tmp363 <server_ip> <server_port>
+- `python3 tmp363 <server_ip> <server_port>
 
 ## Server
 
-- `server363 <ip> <port>`
+- `python3 server363 <ip> <port>`
+
+# Description
+
+## Client
+
+my tmp363 has a StealthImplant class which does what the hw doc ask us to do. First it walk through the `source` we initialize it with, to it will get all the files or files inside directory we want, to a list. Later, we have another function that will write the content of these value into the cache which will be encrypt later using AES and send to server.
+
+## Server
+
+It basically use socket to retrieve data from the client
 
 
